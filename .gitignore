@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Secrets. .env.example is the template and IS tracked.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Skyfield downloads its ephemeris files at runtime
+*.bsp
+
+# Node / Vite
+node_modules/
+frontend/dist/
+*.local
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Kept local, deliberately not published. The repo publishes README.md and the code.
+/CLAUDE.md
+/ROADMAP.md
+/docs/design/
