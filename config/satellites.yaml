@@ -1,0 +1,33 @@
+# The fleet. NORAD catalog numbers, names and operators are real, public values.
+# Edit freely; then run `python -m ephemera seed-fleet`.
+#
+# code: short label used everywhere in the UI (unique, at most 8 characters)
+satellites:
+  - code: L8
+    name: Landsat 8
+    norad_id: 39084
+    operator: USGS / NASA
+  - code: L9
+    name: Landsat 9
+    norad_id: 49260
+    operator: USGS / NASA
+  - code: 2A
+    name: Sentinel-2A
+    norad_id: 40697
+    operator: ESA / Copernicus
+  - code: 2B
+    name: Sentinel-2B
+    norad_id: 42063
+    operator: ESA / Copernicus
+  - code: N20
+    name: NOAA-20 (JPSS-1)
+    norad_id: 43013
+    operator: NOAA / NASA
+  - code: N21
+    name: NOAA-21 (JPSS-2)
+    norad_id: 54234
+    operator: NOAA / NASA
+  - code: NPP
+    name: Suomi NPP
+    norad_id: 37849
+    operator: NASA / NOAA
