@@ -62,3 +62,33 @@ def test_unknown_station_is_an_error():
 def test_compute_without_seed_is_an_error():
     result = run("compute-passes")
     assert result.exit_code == 1
+
+
+def test_simulate_run_scheduler_show_run(monkeypatch):
+    from ephemera.orbits import celestrak_client
+
+    assert run("seed-fleet").exit_code == 0
+    epoch = parse_epoch(OMM["EPOCH"])
+    monkeypatch.setattr(cli, "_now", lambda: epoch)
+    monkeypatch.setattr(celestrak_client, "fetch_gp", lambda norad_id: OMM if norad_id == 39084 else (_ for _ in ()).throw(celestrak_client.CelestrakError("x")))
+    run("fetch-orbital-data", "--satellite", "L8")
+    start = epoch.replace(minute=0, second=0, microsecond=0).isoformat()
+    assert run("compute-passes", "--start", start, "--hours", "24", "--satellite", "L8").exit_code == 0
+
+    sim = run("simulate", "--seed", "3", "--start", start, "--hours", "24")
+    assert sim.exit_code == 0, sim.output
+    assert "Simulation run 1" in sim.output and "Simulated workload" in sim.output
+
+    ran = run("run-scheduler", "--simulation", "1", "--scheduler", "fcfs")
+    assert ran.exit_code == 0, ran.output
+    assert "SIMULATED WORKLOAD" in ran.output and "Stranded per satellite" in ran.output
+
+    shown = run("show-run", "1", "--assignments")
+    assert shown.exit_code == 0, shown.output
+    assert "fcfs" in shown.output and "FAIR" in shown.output or "SVAL" in shown.output
+
+    blocked = run("compute-passes", "--start", start, "--hours", "24", "--satellite", "L8")
+    assert blocked.exit_code == 1 and "--delete-dependent-runs" in blocked.output
+    freed = run("compute-passes", "--start", start, "--hours", "24", "--satellite", "L8", "--delete-dependent-runs")
+    assert freed.exit_code == 0 and "deleted   schedule run 1" in freed.output
+    assert run("show-run", "1").exit_code == 1

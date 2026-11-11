@@ -12,6 +12,8 @@ from ephemera.models import Base
 
 FIXTURES = Path(__file__).parent / "fixtures"
 REPO_CONFIG = Path(__file__).resolve().parents[2] / "config"
+# Illustrative workload values for hand-built Satellite rows.
+WORKLOAD = {"storage_capacity_gb": 150.0, "generation_rate_gb_per_hour": 3.0, "downlink_rate_gb_per_min": 1.0}
 
 
 @pytest.fixture

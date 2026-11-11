@@ -102,8 +102,12 @@ def compute_passes(
     hours: HoursOpt = None,
     satellite: SatelliteOpt = None,
     station: StationOpt = None,
+    delete_dependent_runs: Annotated[
+        bool, typer.Option("--delete-dependent-runs", help="Delete schedule runs that used the replaced passes.")
+    ] = False,
 ) -> None:
     """Predict passes from cached element sets and store them (replaces passes in the window)."""
+    from ephemera.orbits.passes_service import DependentRunsError
     from ephemera.orbits.passes_service import compute_passes as compute
 
     now = _now()
@@ -114,8 +118,21 @@ def compute_passes(
     with session_scope() as session:
         sats = _satellites(session, satellite)
         stations = _stations(session, station)
-        result = compute(session, sats, stations, start=window_start, hours=window_hours, now=now)
+        try:
+            result = compute(
+                session,
+                sats,
+                stations,
+                start=window_start,
+                hours=window_hours,
+                now=now,
+                delete_dependent_runs=delete_dependent_runs,
+            )
+        except DependentRunsError as exc:
+            _fail(str(exc))
     typer.echo(f"Window {result.start:%Y-%m-%d %H:%M} to {result.end:%Y-%m-%d %H:%M} UTC")
+    for run_id in result.deleted_schedule_runs:
+        typer.secho(f"deleted   schedule run {run_id} (it used replaced passes)", fg=typer.colors.YELLOW)
     for (sat_code, station_code), count in result.counts.items():
         typer.echo(f"  {sat_code:<4} over {station_code:<5} {count:>3} passes")
     typer.echo(f"{result.total} passes stored ({result.replaced} previous passes in the window replaced).")
@@ -161,6 +178,93 @@ def show_passes(
             end=window_start + timedelta(hours=window_hours),
         )
         typer.echo(format_passes(passes, local_time=local_time))
+
+
+@app.command("simulate")
+def simulate(
+    seed: Annotated[int, typer.Option(help="Random seed. Same seed and inputs: same data.")] = 1,
+    start: StartOpt = None,
+    hours: HoursOpt = None,
+    routine_chunk_minutes: Annotated[float, typer.Option(help="Routine data arrives in one chunk per interval.")] = 10,
+    urgent_events_per_day: Annotated[float, typer.Option(help="Urgent events per satellite per day (Poisson).")] = 2.0,
+    urgent_chunk_gb: Annotated[float, typer.Option(help="Size of each urgent chunk.")] = 5.0,
+) -> None:
+    """Create a seeded SIMULATED data workload over a window and store it as a simulation run."""
+    from ephemera.downlink.runs import create_simulation
+    from ephemera.downlink.simulation import SimulationParams
+
+    now = _now()
+    window_start = parse_time(start) if start else now.replace(second=0, microsecond=0)
+    window_hours = hours if hours is not None else get_settings().pass_window_hours
+    try:
+        params = SimulationParams(
+            seed=seed,
+            start=window_start,
+            end=window_start + timedelta(hours=window_hours),
+            routine_chunk_minutes=routine_chunk_minutes,
+            urgent_events_per_day=urgent_events_per_day,
+            urgent_chunk_gb=urgent_chunk_gb,
+        )
+    except ValueError as exc:
+        _fail(str(exc))
+    with session_scope() as session:
+        sats = _satellites(session, None)
+        run = create_simulation(session, sats, params, now=now)
+        chunks = run.chunks
+        urgent = sum(1 for c in chunks if c.urgent)
+        total = sum(c.size_gb for c in chunks)
+        run_id = run.id
+    typer.echo(
+        f"Simulation run {run_id}: seed {seed}, {params.start:%Y-%m-%d %H:%M} to {params.end:%Y-%m-%d %H:%M} UTC."
+    )
+    typer.echo(f"{len(chunks)} chunks ({urgent} urgent), {total:.1f} GB generated. Simulated workload, not measured.")
+    typer.echo(f"Next: python -m ephemera run-scheduler --simulation {run_id} --scheduler fcfs")
+
+
+@app.command("run-scheduler")
+def run_scheduler_cmd(
+    simulation: Annotated[int, typer.Option("--simulation", help="Simulation run id (from simulate).")],
+    scheduler: Annotated[str, typer.Option("--scheduler", help="fcfs")] = "fcfs",
+) -> None:
+    """Run a scheduler over a simulation's window and store the schedule run. Prints its metrics."""
+    from ephemera.downlink.runs import RunError, get_simulation, load_run, run_scheduler
+    from ephemera.orbits.report import format_metrics
+
+    with session_scope() as session:
+        try:
+            sim = get_simulation(session, simulation)
+            run = run_scheduler(session, sim, scheduler, now=_now())
+            loaded = load_run(session, run)
+        except RunError as exc:
+            _fail(str(exc))
+        typer.echo(format_metrics(loaded.metrics, simulation_id=sim.id, run_id=run.id, seed=sim.seed))
+
+
+@app.command("show-run")
+def show_run(
+    run_id: Annotated[int, typer.Argument(help="Schedule run id.")],
+    assignments: Annotated[bool, typer.Option("--assignments", help="Also list the passes used.")] = False,
+) -> None:
+    """Replay a stored schedule run and print its metrics (computed on demand, never stored)."""
+    from ephemera.downlink.runs import RunError, get_schedule_run, load_run
+    from ephemera.orbits.report import format_metrics
+
+    with session_scope() as session:
+        try:
+            run = get_schedule_run(session, run_id)
+        except RunError as exc:
+            _fail(str(exc))
+        loaded = load_run(session, run)
+        sim = run.simulation_run
+        typer.echo(format_metrics(loaded.metrics, simulation_id=sim.id, run_id=run.id, seed=sim.seed))
+        if assignments:
+            typer.echo("")
+            for a in sorted(loaded.assignments, key=lambda a: (a.start, a.station)):
+                outcome = loaded.execution.passes[a.pass_id]
+                typer.echo(
+                    f"  {a.start:%Y-%m-%d %H:%M:%S} {a.station:<5} {a.satellite:<4} "
+                    f"{(a.end - a.start).total_seconds() / 60:5.1f} min  {outcome.downlinked_gb:6.1f} GB"
+                )
 
 
 def _satellites(session, idents):  # type: ignore[no-untyped-def]

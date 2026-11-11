@@ -13,7 +13,7 @@ from ephemera.orbits.celestrak_client import (
     parse_gp_response,
     refresh_orbital_elements,
 )
-from tests.conftest import load_omm, utc
+from tests.conftest import WORKLOAD, load_omm, utc
 
 NOW = utc(2026, 11, 11, 12)
 
@@ -25,7 +25,7 @@ def omm():
 
 @pytest.fixture
 def sat(session):
-    s = Satellite(norad_id=39084, code="L8", name="Landsat 8", operator="USGS / NASA")
+    s = Satellite(norad_id=39084, code="L8", name="Landsat 8", operator="USGS / NASA", **WORKLOAD)
     session.add(s)
     session.commit()
     return s

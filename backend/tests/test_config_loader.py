@@ -20,7 +20,10 @@ def _write(tmp_path: Path, name: str, text: str) -> Path:
     return path
 
 
-SAT = "  - {code: L8, name: Landsat 8, norad_id: 39084, operator: USGS}\n"
+SAT = (
+    "  - {code: L8, name: Landsat 8, norad_id: 39084, operator: USGS,"
+    " workload: {storage_capacity_gb: 150, generation_rate_gb_per_hour: 3, downlink_rate_gb_per_min: 1}}\n"
+)
 STATION = (
     "  - {code: FAIR, name: Fairbanks, operator: NOAA, latitude_deg: 64.978,"
     " longitude_deg: -147.499, altitude_m: 319, min_elevation_deg: 10, timezone: America/Anchorage}\n"
@@ -62,3 +65,10 @@ def test_empty_or_missing_file(tmp_path):
         load_satellites(tmp_path / "nope.yaml")
     with pytest.raises(ConfigError, match="non-empty"):
         load_satellites(_write(tmp_path, "e.yaml", "satellites: []\n"))
+
+
+def test_workload_is_required_and_positive(tmp_path):
+    with pytest.raises(ConfigError, match="missing 'workload'"):
+        load_satellites(_write(tmp_path, "s.yaml", "satellites:\n" + SAT.replace(" workload: {", " w: {")))
+    with pytest.raises(ConfigError, match="must be positive"):
+        load_satellites(_write(tmp_path, "s.yaml", "satellites:\n" + SAT.replace("downlink_rate_gb_per_min: 1", "downlink_rate_gb_per_min: 0")))

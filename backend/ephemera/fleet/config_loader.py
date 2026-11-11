@@ -21,6 +21,10 @@ class SatelliteConfig:
     name: str
     norad_id: int
     operator: str
+    # Simulated workload. Illustrative values, not spacecraft specifications.
+    storage_capacity_gb: float
+    generation_rate_gb_per_hour: float
+    downlink_rate_gb_per_min: float
 
 
 @dataclass(frozen=True)
@@ -99,16 +103,26 @@ def _field(entry: dict[str, Any], name: str, kind: type, where: str) -> Any:
 
 def _satellite(entry: dict[str, Any], path: Path, i: int) -> SatelliteConfig:
     where = f"{path}: satellites[{i}]"
+    workload = entry.get("workload")
+    if not isinstance(workload, dict):
+        raise ConfigError(f"{where}: missing 'workload' mapping")
+    wwhere = f"{where}.workload"
     sat = SatelliteConfig(
         code=_field(entry, "code", str, where),
         name=_field(entry, "name", str, where),
         norad_id=_field(entry, "norad_id", int, where),
         operator=_field(entry, "operator", str, where),
+        storage_capacity_gb=_field(workload, "storage_capacity_gb", float, wwhere),
+        generation_rate_gb_per_hour=_field(workload, "generation_rate_gb_per_hour", float, wwhere),
+        downlink_rate_gb_per_min=_field(workload, "downlink_rate_gb_per_min", float, wwhere),
     )
     if len(sat.code) > 8:
         raise ConfigError(f"{where}: code '{sat.code}' is longer than 8 characters")
     if not 0 < sat.norad_id < 1_000_000_000:
         raise ConfigError(f"{where}: norad_id {sat.norad_id} is out of range")
+    for name in ("storage_capacity_gb", "generation_rate_gb_per_hour", "downlink_rate_gb_per_min"):
+        if getattr(sat, name) <= 0:
+            raise ConfigError(f"{wwhere}: {name} must be positive")
     return sat
 
 
