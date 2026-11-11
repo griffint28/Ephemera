@@ -94,7 +94,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_passes_station_id_rise_time", table_name="passes")
+    # Dropping the table drops its indexes. MariaDB refuses to drop ix_passes_station_id_rise_time
+    # on its own because it backs the station_id foreign key.
     op.drop_table("passes")
     op.drop_table("orbital_elements")
     op.drop_table("stations")

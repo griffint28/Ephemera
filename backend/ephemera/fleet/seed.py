@@ -24,7 +24,14 @@ def seed_fleet(session: Session, fleet: FleetConfig) -> SeedResult:
     sats = {s.norad_id: s for s in session.scalars(select(Satellite))}
     for cfg in fleet.satellites:
         label = f"satellite {cfg.code} ({cfg.norad_id})"
-        values = {"code": cfg.code, "name": cfg.name, "operator": cfg.operator}
+        values = {
+            "code": cfg.code,
+            "name": cfg.name,
+            "operator": cfg.operator,
+            "storage_capacity_gb": cfg.storage_capacity_gb,
+            "generation_rate_gb_per_hour": cfg.generation_rate_gb_per_hour,
+            "downlink_rate_gb_per_min": cfg.downlink_rate_gb_per_min,
+        }
         row = sats.pop(cfg.norad_id, None)
         if row is None:
             session.add(Satellite(norad_id=cfg.norad_id, **values))

@@ -31,6 +31,7 @@ PURE_FILES = [
     *sorted((BACKEND / "scheduler").rglob("*.py")),
     BACKEND / "ephemera" / "orbits" / "pass_prediction.py",
     BACKEND / "ephemera" / "fleet" / "config_loader.py",
+    BACKEND / "ephemera" / "downlink" / "simulation.py",
 ]
 
 
@@ -48,7 +49,9 @@ def _loaded_modules(*modules: str) -> set[str]:
 
 
 def test_pure_modules_pull_in_no_framework_at_runtime():
-    loaded = _loaded_modules("scheduler", "ephemera.orbits.pass_prediction", "ephemera.fleet.config_loader")
+    loaded = _loaded_modules(
+        "scheduler", "ephemera.orbits.pass_prediction", "ephemera.fleet.config_loader", "ephemera.downlink.simulation"
+    )
     assert not {m.split(".")[0] for m in loaded} & FRAMEWORKS
 
 
@@ -61,6 +64,9 @@ def test_only_the_fetch_command_loads_the_celestrak_client():
         "ephemera.orbits.report",
         "ephemera.fleet.seed",
         "ephemera.fleet.lookup",
+        "ephemera.downlink.adapters",
+        "ephemera.downlink.runs",
+        "ephemera.downlink.simulation",
         "scheduler",
     )
     assert "ephemera.orbits.celestrak_client" not in loaded

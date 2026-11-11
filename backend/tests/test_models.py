@@ -5,11 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import StatementError
 
 from ephemera.models import NaiveDatetimeError, Satellite
-from tests.conftest import utc
+from tests.conftest import WORKLOAD, utc
 
 
 def test_naive_datetime_rejected(session):
-    session.add(Satellite(norad_id=1, code="X", name="X", operator="X", last_fetch_attempt_at=datetime(2026, 1, 1)))
+    session.add(Satellite(norad_id=1, code="X", name="X", operator="X", **WORKLOAD, last_fetch_attempt_at=datetime(2026, 1, 1)))
     with pytest.raises(StatementError) as info:
         session.flush()
     assert isinstance(info.value.orig, NaiveDatetimeError)
@@ -18,7 +18,7 @@ def test_naive_datetime_rejected(session):
 def test_aware_datetime_stored_as_utc_and_returned_aware(session):
     plus_two = timezone(timedelta(hours=2))
     session.add(
-        Satellite(norad_id=1, code="X", name="X", operator="X", last_fetch_attempt_at=datetime(2026, 1, 1, 12, tzinfo=plus_two))
+        Satellite(norad_id=1, code="X", name="X", operator="X", **WORKLOAD, last_fetch_attempt_at=datetime(2026, 1, 1, 12, tzinfo=plus_two))
     )
     session.commit()
     session.expunge_all()
