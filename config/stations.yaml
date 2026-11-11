@@ -1,0 +1,30 @@
+# Ground stations. Coordinates are real, public values (WGS84; altitude above the ellipsoid,
+# approximate). Each station has one antenna, which tracks one satellite at a time.
+#
+# min_elevation_deg: the elevation mask. A pass counts only while the satellite is above it.
+# timezone: IANA name, used for display only. Everything is stored and computed in UTC.
+stations:
+  - code: SVAL
+    name: Svalbard Satellite Station
+    operator: KSAT
+    latitude_deg: 78.2298
+    longitude_deg: 15.4078
+    altitude_m: 450
+    min_elevation_deg: 10
+    timezone: Arctic/Longyearbyen
+  - code: FAIR
+    name: Fairbanks, Gilmore Creek
+    operator: NOAA
+    latitude_deg: 64.9780
+    longitude_deg: -147.4990
+    altitude_m: 319
+    min_elevation_deg: 10
+    timezone: America/Anchorage
+  - code: WALL
+    name: Wallops Island, Command & Data Acquisition
+    operator: NOAA
+    latitude_deg: 37.9467
+    longitude_deg: -75.4587
+    altitude_m: 13
+    min_elevation_deg: 10
+    timezone: America/New_York

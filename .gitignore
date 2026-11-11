@@ -35,3 +35,7 @@ frontend/dist/
 /CLAUDE.md
 /ROADMAP.md
 /docs/design/
+
+# Virtualenvs: .venv is a symlink to .venv.nosync, which iCloud Drive does not sync
+.venv
+*.nosync

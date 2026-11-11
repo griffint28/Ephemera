@@ -1,0 +1,9 @@
+alembic==1.20.1
+cryptography==50.0.2
+fastapi==0.162.4
+pydantic-settings==2.16.2
+PyMySQL==1.2.4
+PyYAML==6.0.3
+skyfield==1.55
+SQLAlchemy==2.1.8
+typer==0.29.1

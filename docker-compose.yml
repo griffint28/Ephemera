@@ -1,0 +1,35 @@
+# Development stack. Connection settings come from .env (see .env.example).
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:?set DB_NAME in .env}
+      MARIADB_USER: ${DB_USER:?set DB_USER in .env}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      CONFIG_DIR: /config
+    volumes:
+      - ./backend:/app
+      - ./config:/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
